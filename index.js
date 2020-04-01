@@ -329,14 +329,14 @@ module.exports = function (schema, options) {
 
     createFields(schema, options.fields);
 
-    var returnOptions = {
-        transform: removeFuzzyElements(options.fields),
-        getters: true,
-        setters: true,
-        virtuals: true
-    };
-    schema.set('toObject', returnOptions);
-    schema.set('toJSON', returnOptions);
+    // var returnOptions = {
+    //     transform: removeFuzzyElements(options.fields),
+    //     getters: true,
+    //     setters: true,
+    //     virtuals: true
+    // };
+    // schema.set('toObject', returnOptions);
+    // schema.set('toJSON', returnOptions);
 
     function saveMiddleware(next) {
         if (this) {
