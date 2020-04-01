@@ -102,6 +102,13 @@ function makeNGrams(text, escapeSpecialCharacters, minSize, prefixOnly) {
         return [];
     }
 
+    if (Array.isArray(text)) {
+        if (text.length === 0) {
+            return [];
+        }
+        text = text.join(' ');
+    }
+
     var result = text
         .split(' ')
         .map(function (q) {
