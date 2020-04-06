@@ -61,7 +61,7 @@ function nGrams(text, minSize, prefixOnly) {
     index = prefixOnly ? 0 : text.length - minSize + 1;
 
     if (text.length <= minSize) {
-        return [text];
+        return [];
     }
 
     if (!prefixOnly && index < 1) {
@@ -312,7 +312,7 @@ function removeFuzzyElements(fields) {
  * @param {object} schema - Mongo Collection
  * @param {object} options - plugin options
  */
-module.exports = function (schema, options) {
+function mongooseFuzzySearching(schema, options) {
     if (!options || (options && !options.fields)) {
         throw new Error('You must set at least one field for fuzzy search.');
     }
@@ -405,3 +405,5 @@ module.exports = function (schema, options) {
         return Model['find'].apply(this, [search, { confidenceScore: { $meta: "textScore" } }, { sort: { confidenceScore: { $meta: "textScore" } } }, callback]);
     };
 };
+
+module.exports = { mongooseFuzzySearching, createNGrams }
