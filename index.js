@@ -13,6 +13,7 @@ var replaceLanguageCharacters = require('./languageCharacters');
  */
 var constants = {
     DEFAULT_MIN_SIZE: 2,
+    DEFAULT_MAX_SIZE: 1500,
     DEFAULT_PREFIX_ONLY: false
 }
 
@@ -98,10 +99,11 @@ function nGrams(text, minSize, prefixOnly) {
  * @param {string} text - The string for the sequence.
  * @param {boolean} escapeSpecialCharacters - Escape special characters from the given string.
  * @param {number} minSize - Lower limit to start creating sequence.
+ * @param {number} maxSize - higher limit to start creating sequence.
  * @param {boolean} prefixOnly -Only return ngrams from start of word.
  * @return {Array} The sequence of characters in Array of Strings.
  */
-function makeNGrams(text, escapeSpecialCharacters, minSize, prefixOnly) {
+function makeNGrams(text, escapeSpecialCharacters, minSize, maxSize = constants.DEFAULT_MAX_SIZE, prefixOnly) {
     if (!text) {
         return [];
     }
@@ -111,6 +113,10 @@ function makeNGrams(text, escapeSpecialCharacters, minSize, prefixOnly) {
             return [];
         }
         text = text.join(' ');
+    }
+
+    if (text.length >= maxSize) {
+        throw new Error(`Field is too long (maximum is ${maxSize} characters)`);
     }
 
     var result = text
@@ -265,7 +271,7 @@ function createNGrams(attributes, fields) {
     function objectCb(item) {
         if (attributes[`${item.name}`]) {
             var escapeSpecialCharacters = item.escapeSpecialCharacters !== false;
-            attributes[`${item.name}_fuzzy`] = makeNGrams(attributes[item.name], escapeSpecialCharacters, item.minSize, item.prefixOnly);
+            attributes[`${item.name}_fuzzy`] = makeNGrams(attributes[item.name], escapeSpecialCharacters, item.minSize, item.maxSize, item.prefixOnly);
         }
     }
 
@@ -278,7 +284,7 @@ function createNGrams(attributes, fields) {
             if(!data.length) data = [data];
             data.forEach(function (data) {
                 item.keys.forEach(function (key, index) {
-                    obj = Object.assign({}, obj, {[`${key}_fuzzy`]: makeNGrams(data[key], escapeSpecialCharacters, item.minSize, item.prefixOnly)});
+                    obj = Object.assign({}, obj, {[`${key}_fuzzy`]: makeNGrams(data[key], escapeSpecialCharacters, item.minSize, item.maxSize, item.prefixOnly)});
                 });
                 attrs.push(obj);
             });
@@ -383,7 +389,8 @@ function mongooseFuzzySearching(schema, options) {
 
         var checkPrefixOnly = isObject(args[0]) ? args[0].prefixOnly : constants.DEFAULT_PREFIX_ONLY;
         var defaultNgamMinSize = isObject(args[0]) ? args[0].minSize : constants.DEFAULT_MIN_SIZE;
-        var query = makeNGrams(queryString, false, defaultNgamMinSize, checkPrefixOnly).join(' ');
+        var defaultNgamMaxSize = isObject(args[0]) ? args[0].maxSize : constants.DEFAULT_MAX_SIZE;
+        var query = makeNGrams(queryString, false, defaultNgamMinSize, defaultNgamMaxSize, checkPrefixOnly).join(' ');
 
         var parsedArguments = parseArguments(args, 1, 2);
         var options = parsedArguments.options;
