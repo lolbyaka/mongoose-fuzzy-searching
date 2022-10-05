@@ -117,7 +117,7 @@ function makeNGrams(text, escapeSpecialCharacters, minSize, maxSize, maxTextSize
         text = text.join(' ');
     }
 
-    if (text.length >= maxTextSize) {
+    if (text.length > maxTextSize) {
         throw new Error(`Field is too long (maximum is ${maxTextSize} characters)`);
     }
 
