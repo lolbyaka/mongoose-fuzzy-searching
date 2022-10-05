@@ -13,7 +13,8 @@ var replaceLanguageCharacters = require('./languageCharacters');
  */
 var constants = {
     DEFAULT_MIN_SIZE: 2,
-    DEFAULT_MAX_SIZE: 1500,
+    DEFAULT_MAX_SIZE: 150,
+    DEFAULT_MAX_TEXT_SIZE: 1500,
     DEFAULT_PREFIX_ONLY: false
 }
 
@@ -42,7 +43,7 @@ function parseArguments(args, i1, i2) {
  * @param {boolean} prefixOnly -Only return ngrams from start of word.
  * @return {Array} The sequence of characters in Array of Strings.
  */
-function nGrams(text, minSize, prefixOnly) {
+function nGrams(text, minSize, maxSize, prefixOnly) {
     if (minSize == null) {
         minSize = constants.DEFAULT_MIN_SIZE;
     }
@@ -61,7 +62,7 @@ function nGrams(text, minSize, prefixOnly) {
     text = text.slice ? text.toLowerCase() : String(text);
     index = prefixOnly ? 0 : text.length - minSize + 1;
 
-    if (text.length === minSize) {
+    if (text.length === minSize || text.length > maxSize) {
         return [text];
     }
 
@@ -99,11 +100,12 @@ function nGrams(text, minSize, prefixOnly) {
  * @param {string} text - The string for the sequence.
  * @param {boolean} escapeSpecialCharacters - Escape special characters from the given string.
  * @param {number} minSize - Lower limit to start creating sequence.
- * @param {number} maxSize - higher limit to start creating sequence.
+ * @param {number} maxSize - Higher limit to start creating sequence.
+ * @param {number} maxTextSize - Higher limit of full field length to start creating sequence.
  * @param {boolean} prefixOnly -Only return ngrams from start of word.
  * @return {Array} The sequence of characters in Array of Strings.
  */
-function makeNGrams(text, escapeSpecialCharacters, minSize, maxSize = constants.DEFAULT_MAX_SIZE, prefixOnly) {
+function makeNGrams(text, escapeSpecialCharacters, minSize, maxSize, maxTextSize = constants.DEFAULT_MAX_TEXT_SIZE, prefixOnly) {
     if (!text) {
         return [];
     }
@@ -115,14 +117,14 @@ function makeNGrams(text, escapeSpecialCharacters, minSize, maxSize = constants.
         text = text.join(' ');
     }
 
-    if (text.length >= maxSize) {
-        throw new Error(`Field is too long (maximum is ${maxSize} characters)`);
+    if (text.length >= maxTextSize) {
+        throw new Error(`Field is too long (maximum is ${maxTextSize} characters)`);
     }
 
     var result = text
         .split(' ')
         .map(function (q) {
-            return nGrams(replaceSymbols(q, escapeSpecialCharacters), minSize || constants.DEFAULT_MIN_SIZE, prefixOnly || constants.DEFAULT_PREFIX_ONLY)
+            return nGrams(replaceSymbols(q, escapeSpecialCharacters), minSize || constants.DEFAULT_MIN_SIZE, maxSize || constants.DEFAULT_MAX_SIZE, prefixOnly || constants.DEFAULT_PREFIX_ONLY)
         })
         .reduce(function (acc, arr) {
             return acc.concat(arr);
@@ -271,7 +273,7 @@ function createNGrams(attributes, fields) {
     function objectCb(item) {
         if (attributes[`${item.name}`]) {
             var escapeSpecialCharacters = item.escapeSpecialCharacters !== false;
-            attributes[`${item.name}_fuzzy`] = makeNGrams(attributes[item.name], escapeSpecialCharacters, item.minSize, item.maxSize, item.prefixOnly);
+            attributes[`${item.name}_fuzzy`] = makeNGrams(attributes[item.name], escapeSpecialCharacters, item.minSize, item.maxSize, item.maxTextSize, item.prefixOnly);
         }
     }
 
@@ -284,7 +286,7 @@ function createNGrams(attributes, fields) {
             if(!data.length) data = [data];
             data.forEach(function (data) {
                 item.keys.forEach(function (key, index) {
-                    obj = Object.assign({}, obj, {[`${key}_fuzzy`]: makeNGrams(data[key], escapeSpecialCharacters, item.minSize, item.maxSize, item.prefixOnly)});
+                    obj = Object.assign({}, obj, {[`${key}_fuzzy`]: makeNGrams(data[key], escapeSpecialCharacters, item.minSize, item.maxSize, item.maxTextSize, item.prefixOnly)});
                 });
                 attrs.push(obj);
             });
@@ -390,7 +392,8 @@ function mongooseFuzzySearching(schema, options) {
         var checkPrefixOnly = isObject(args[0]) ? args[0].prefixOnly : constants.DEFAULT_PREFIX_ONLY;
         var defaultNgamMinSize = isObject(args[0]) ? args[0].minSize : constants.DEFAULT_MIN_SIZE;
         var defaultNgamMaxSize = isObject(args[0]) ? args[0].maxSize : constants.DEFAULT_MAX_SIZE;
-        var query = makeNGrams(queryString, false, defaultNgamMinSize, defaultNgamMaxSize, checkPrefixOnly).join(' ');
+        var defaultNgamMaxTextSize = isObject(args[0]) ? args[0].maxTextSize : constants.DEFAULT_MAX_TEXT_SIZE;
+        var query = makeNGrams(queryString, false, defaultNgamMinSize, defaultNgamMaxSize, defaultNgamMaxTextSize, checkPrefixOnly).join(' ');
 
         var parsedArguments = parseArguments(args, 1, 2);
         var options = parsedArguments.options;
